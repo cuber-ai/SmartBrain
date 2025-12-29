@@ -133,7 +133,7 @@ create_repo() {
         return 0
     else
         log_error "[@SmartBrain] Failed to create repository: $repo_name"
-        echo "$response" | grep -o '"message":"[^"]*"' || echo "$response"
+        echo "$response" | grep -o '"message":"[^"]*"' || echo "Check GitHub token permissions"
         return 1
     fi
 }
@@ -196,12 +196,17 @@ push_code() {
     
     log_info "[@SmartBrain] Preparing code in temporary directory"
     
-    # Copy source files to temp directory
-    cp -r "$source_path"/* "$temp_dir/" 2>/dev/null || {
-        log_error "Failed to copy source files"
-        rm -rf "$temp_dir"
-        return 1
-    }
+    # Copy source files to temp directory (handle empty directories)
+    if [ "$(ls -A "$source_path" 2>/dev/null)" ]; then
+        cp -r "$source_path"/* "$temp_dir/" 2>/dev/null || {
+            log_error "Failed to copy source files"
+            rm -rf "$temp_dir"
+            return 1
+        }
+    else
+        log_warning "Source directory is empty, creating placeholder"
+        echo "# Placeholder" > "$temp_dir/README.md"
+    fi
     
     cd "$temp_dir"
     
@@ -417,16 +422,17 @@ EOF
     if [[ -n "$STRIPE_SECRET_KEY" ]]; then
         log_info "[@SmartBrain] Configuring Stripe payment processing"
         
-        # Create Stripe product (placeholder - would use Stripe API in production)
+        # Placeholder for Stripe API integration
+        # In production, this would create actual products/prices via Stripe API
         local stripe_product_id="prod_smartbrain_$(date +%s)"
-        log_success "[@SmartBrain] Stripe product created: $stripe_product_id"
-        
-        # Create Stripe price
         local stripe_price_id="price_smartbrain_$(date +%s)"
-        log_success "[@SmartBrain] Stripe pricing configured: $stripe_price_id"
+        
+        log_info "[@SmartBrain] Stripe integration prepared (placeholder IDs generated)"
+        log_info "[@SmartBrain] Product: $stripe_product_id"
+        log_info "[@SmartBrain] Price: $stripe_price_id"
         
         # Store Stripe IDs in config
-        echo "{\"product_id\": \"$stripe_product_id\", \"price_id\": \"$stripe_price_id\"}" > \
+        echo "{\"product_id\": \"$stripe_product_id\", \"price_id\": \"$stripe_price_id\", \"note\": \"Placeholder - replace with actual Stripe API integration\"}" > \
             "/tmp/smartbrain_stripe_config.json"
     fi
     
@@ -464,9 +470,9 @@ deploy_full_stack() {
     
     # Step 1: Create modular repositories
     log_info "[@SmartBrain] Step 1/4: Creating modular repositories"
-    create_repo "SmartBrain-Core" "Core SmartBrain automation engine for crypto and blockchain" "false" || log_warning "Core repo may already exist"
-    create_repo "SmartContracts-Suite" "Smart contract auditing and deployment tools" "false" || log_warning "Contracts repo may already exist"
-    create_repo "SmartBrain-Docs" "Documentation and guides for crypto developers" "false" || log_warning "Docs repo may already exist"
+    create_repo "SmartBrain-Core" "Core SmartBrain automation engine for crypto and blockchain" "false" || log_warning "Core repo creation failed (may already exist or permissions issue)"
+    create_repo "SmartContracts-Suite" "Smart contract auditing and deployment tools" "false" || log_warning "Contracts repo creation failed (may already exist or permissions issue)"
+    create_repo "SmartBrain-Docs" "Documentation and guides for crypto developers" "false" || log_warning "Docs repo creation failed (may already exist or permissions issue)"
     echo ""
     
     # Step 2: Deploy bots
